@@ -1,0 +1,49 @@
+{
+  "account": {
+    "name": "你的公众号名称",
+    "appid": "",
+    "secret": ""
+  },
+  "collector": {
+    "mode": "url_feed",
+    "local_folder": "",
+    "source_urls_file": "data/source_urls.json",
+    "stats_enabled": true,
+    "stats_grace_days": 3
+  },
+  "sync": {
+    "enabled": true,
+    "trigger_categories": ["Skill"],
+    "dry_run": true,
+    "staging_dir": "data/staging"
+  },
+  "feishu": {
+    "app_id": "cli_xxxxxxxxxxxxxxxx",
+    "app_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "space_id": "Wiki节点Token（my.feishu.cn/wiki/XXXX 中的 XXXX，不是数字 space_id）",
+    "parent_node_token": "",
+    "categories": {},
+    "default_category": "未分类"
+  },
+  "analyzer": {
+    "history_days": 7
+  },
+  "recommender": {
+    "top_n": 5,
+    "history_weight": 0.5,
+    "hotspot_weight": 0.5,
+    "domain_keywords": ["AI", "副业", "公众号", "写作", "效率", "工具", "提示词", "自动化", "变现", "内容"],
+    "hotspot_sources": ["weibo", "toutiao", "baidu"]
+  },
+  "schedule": {
+    "enabled": false,
+    "morning": "08:00",
+    "evening": "20:00",
+    "night": "22:00",
+    "watch_interval_min": 15
+  },
+  "paths": {
+    "db": "data/kb.db",
+    "data_dir": "data"
+  }
+}
