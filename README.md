@@ -46,6 +46,51 @@ flowchart LR
 
 ---
 
+## 自动捕获（零手动链接）⭐
+
+**目标：用 `wechat-publisher-ultimate` 发布文章的那一刻，文章自动进知识库 + 飞书，不需要你手动贴任何链接。**
+
+微信没有"文章发布"的 webhook 事件，所以"自动识别最近发布的文章"靠**双保险**实现：
+
+### 机制 1 · 发布钩子（推荐，零延迟、无需白名单）
+
+`wechat-publisher-ultimate` 的 `Publisher.publish()` 在草稿创建成功后，会调用
+`kb_autosync.bridge.capture_after_publish()`，**直接用发布流程已经生成好的正文**入库并同步飞书。
+
+- ✅ 不需要重新抓网、不需要公众号 IP 白名单（正文就在内存里）
+- ✅ 幂等：同一篇重复发布不会重复入库
+- ✅ 非致命：kb_autosync 缺失/报错只记 warning，绝不影响你原来的发布流程
+- 钩子路径可配：`KB_AUTOSYNC_DIR` 环境变量，或默认 `C:/Users/16972/WorkBuddy/2026-08-17-19-48-46/kb_autosync`
+
+> 换言之：**你正常用 A 技能发文章，知识库自己就长了**——这就是"使用 A 技能 = 自动捕获"。
+
+### 机制 2 · 自动检测（detect / watch，兜底）
+
+针对"在公众号后台直接群发、没走 A 技能"的文章，用公众号官方接口
+`freepublish/batchget` 列出已发布列表，与数据库比对，挑出**未入库的新文**自动抓取。
+
+```bash
+kb_autosync detect            # 一次性检测新发布文章
+kb_autosync detect --sync    # 检测并同步飞书
+kb_autosync watch             # 每 15 分钟自动检测 + 同步（常驻）
+```
+
+⚠️ **detect / watch 需要：**
+- `account.appid` + `account.secret` 已填
+- 你的**运行机器公网 IP 已加入公众号「设置 → 安全中心 → IP 白名单」**
+
+（沙箱/未加白名单时会优雅返回空，不报错。这也是为什么机制 1 的发布钩子更省心。）
+
+### 二者怎么选
+
+| 场景 | 用哪个 |
+|---|---|
+| 你用 A 技能发文章 | 机制 1（发布钩子）自动捕获，什么都不用做 |
+| 你在后台直接群发 | 机制 2（detect/watch）兜底捕获 |
+| 没 API 权限/不想配白名单 | 机制 1 依旧可用（钩子不依赖白名单） |
+
+---
+
 ## 快速开始（5 分钟）
 
 ### 1. 前置
@@ -127,7 +172,8 @@ kb_autosync sync --all --no-dry-run
 | `kb_autosync recommend [--top-n 5] [--no-kb]` | 生成次日选题 |
 | `kb_autosync run --job morning\|evening\|night` | 执行单个定时任务 |
 | `kb_autosync scheduler` | 常驻定时循环（自带调度器，Ctrl+C 退出） |
-| `kb_autosync watch [--interval 15]` | 轮询模式，命中新文章立即同步 |
+| `kb_autosync watch [--interval 15]` | 轮询模式，自动检测新发布并立即同步（常驻） |
+| `kb_autosync detect [--sync]` | 一次性自动检测新发布的公众号文章（mp_api） |
 | `kb_autosync status` | 数据库概览 |
 
 ---

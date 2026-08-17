@@ -125,17 +125,23 @@ class Scheduler:
 
 
 def watch(cfg, db, interval_min: Optional[int] = None, dry_run: Optional[bool] = None):
-    """轮询模式：每隔 N 分钟采集一次，命中 trigger_categories 的新文章立即同步飞书。
+    """自动检测轮询：每隔 N 分钟用 mp_api 检测"最近发布且未入库"的新文章，
+    命中后立即同步飞书。弥补微信没有发布 webhook 的缺口（近似"发布后自动同步"）。
 
-    用于弥补微信没有"发布 webhook"的缺口——近似"发布后自动同步"。
+    注意：mp_api 需要公众号 IP 白名单，在用户本机（加白名单）才能稳定检测；
+    沙箱/无白名单环境下 detect 返回空（不报错），真正的零延迟捕获由 publisher
+    发布钩子(bridge)承担。
     """
+    from . import detect as detect_mod
     interval = interval_min or cfg.get("schedule", "watch_interval_min", default=15)
-    logger.info("[watch] 每 %d 分钟轮询一次新文章并同步", interval)
-    print(f"watch 模式：每 {interval} 分钟轮询（Ctrl+C 退出）。")
+    logger.info("[watch] 每 %d 分钟自动检测新发布文章并同步", interval)
+    print(f"watch 模式（自动检测）：每 {interval} 分钟轮询（Ctrl+C 退出）。")
     try:
         while True:
             try:
-                arts = collector.collect(cfg, db, mode=cfg.get("collector", "mode", default="url_feed"))
+                new = detect_mod.detect_new(cfg, db)
+                if new:
+                    print(f"  检测到 {len(new)} 篇新文章，开始同步飞书…")
                 if cfg.get("sync", "enabled", default=True):
                     sync.sync_new(cfg, db, dry_run=dry_run)
             except Exception as e:

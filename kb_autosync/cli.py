@@ -9,7 +9,8 @@
   run        执行一个定时任务 job=morning|evening|night
   demo       离线跑通整条流水线（demo 数据 → 同步 → 分析 → 选题）
   scheduler  常驻定时循环（早8/晚8/晚10）
-  watch      轮询模式，命中新文章立即同步飞书
+  watch      轮询模式，自动检测新发布文章并立即同步飞书
+  detect     一次性自动检测新发布的公众号文章（mp_api，--sync 可同步）
   status     数据库概览
 
 示例：
@@ -150,6 +151,23 @@ def cmd_watch(args, cfg):
     sched_mod.watch(cfg, d, interval_min=args.interval, dry_run=dry)
 
 
+def cmd_detect(args, cfg):
+    from kb_autosync import detect as det_mod
+    d = _db(cfg)
+    dry = not args.no_dry_run
+    new = det_mod.detect_new(cfg, d)
+    if new:
+        print(f"检测到 {len(new)} 篇新发布文章：")
+        for a in new:
+            print(f"  - {a.get('title')}  ({a.get('publish_time', '')[:10]})")
+        if args.sync:
+            res = sync.sync_new(cfg, d, categories=None, dry_run=dry)
+            print(f"同步结果：{res}（{'预览' if dry else '已推送飞书'}）")
+    else:
+        print("未检测到新文章（接口无返回 / 无新发布 / 需配置 IP 白名单 + appid/secret）")
+    d.close()
+
+
 def cmd_status(args, cfg):
     d = _db(cfg)
     arts = d.list_articles()
@@ -209,6 +227,11 @@ def build_parser():
     sp.add_argument("--interval", type=int, default=None)
     sp.add_argument("--no-dry-run", action="store_true")
     sp.set_defaults(func=cmd_watch)
+
+    sp = sub.add_parser("detect", help="自动检测新发布的公众号文章（mp_api）")
+    sp.add_argument("--sync", action="store_true", help="检测后同步飞书")
+    sp.add_argument("--no-dry-run", action="store_true")
+    sp.set_defaults(func=cmd_detect)
 
     sp = sub.add_parser("status", help="数据库概览")
     sp.set_defaults(func=cmd_status)
