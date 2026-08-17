@@ -13,7 +13,7 @@
   },
   "sync": {
     "enabled": true,
-    "trigger_categories": ["Skill"],
+    "trigger_categories": [],
     "dry_run": true,
     "staging_dir": "data/staging"
   },

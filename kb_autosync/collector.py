@@ -60,21 +60,26 @@ def fetch_html(url: str) -> Optional[str]:
 
 def extract_content(html: str) -> Dict[str, str]:
     result = {"title": "", "author": "", "publish_time": "", "content_html": ""}
-    m = re.search(r'<h1[^>]*class="rich_media_title"[^>]*>(.*?)</h1>', html, re.DOTALL)
+    # 标题：兼容 class 末尾空格 / 多 class 的情况
+    m = re.search(r'<h1[^>]*class="[^"]*rich_media_title[^"]*"[^>]*>(.*?)</h1>', html, re.DOTALL)
     if not m:
         m = re.search(r'<title>(.*?)</title>', html, re.DOTALL)
     if m:
         result["title"] = re.sub(r'<[^>]+>', '', m.group(1)).strip()
-    m = re.search(r'class="rich_media_meta_nickname"[^>]*>.*?<a[^>]*>(.*?)</a>', html, re.DOTALL)
+    # 作者：兼容多 class，再退 var nickname
+    m = re.search(r'class="[^"]*rich_media_meta_nickname[^"]*"[^>]*>.*?<a[^>]*>(.*?)</a>', html, re.DOTALL)
     if not m:
-        m = re.search(r'var nickname = "(.*?)"', html)
+        m = re.search(r'var nickname\s*=\s*"(.*?)"', html)
     if m:
         result["author"] = re.sub(r'<[^>]+>', '', m.group(1)).strip()
-    m = re.search(r'var ct = "(\d+)"', html)
+    m = re.search(r'var ct\s*=\s*"(\d+)"', html)
     if m:
         ts = int(m.group(1))
         result["publish_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts))
-    m = re.search(r'<div[^>]*class="rich_media_content"[^>]*>(.*?)</div>\s*(?:<div|$)', html, re.DOTALL)
+    # 正文：从 rich_media_content 截到评论/相关区(rich_media_area_extra)，避免卷进页脚与广告
+    m = re.search(
+        r'class="[^"]*rich_media_content[^"]*"[^>]*>(.*?)(?:class="[^"]*rich_media_area_extra|id="js_sg_bar"|<!--\s*相关推荐)',
+        html, re.DOTALL)
     if m:
         result["content_html"] = m.group(1).strip()
     else:
