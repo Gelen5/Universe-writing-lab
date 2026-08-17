@@ -118,7 +118,7 @@ def recommend(db, cfg, top_n: Optional[int] = None, end: datetime = None,
 
     logger.info("[recommend] 生成 %d 条选题", len(recs))
 
-    if write_kb:
+    if write_kb and recs:
         pushed = sync_mod.push_topics_to_kb(cfg, recs, dry_run=dry_run)
         logger.info("[recommend] 选题池推送飞书：%s", pushed)
     return recs
